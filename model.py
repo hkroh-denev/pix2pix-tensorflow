@@ -387,7 +387,7 @@ class pix2pix(object):
         sample_files = glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))
 
         # sort testing input
-        n = [int(i) for i in map(lambda x: x.split('/')[-1].split('.jpg')[0], sample_files)]
+        n = [int(i) for i in map(lambda x: x.split(os.sep)[-1].split('.jpg')[0], sample_files)]
         sample_files = [x for (y, x) in sorted(zip(n, sample_files))]
 
         # load testing input
