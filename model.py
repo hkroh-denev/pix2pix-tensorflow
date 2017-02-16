@@ -14,7 +14,7 @@ class pix2pix(object):
                  batch_size=1, sample_size=1, output_size=256,
                  gf_dim=64, df_dim=64, L1_lambda=100,
                  input_c_dim=3, output_c_dim=3, dataset_name='facades',
-                 checkpoint_dir=None, sample_dir=None):
+                 checkpoint_dir=None, sample_dir=None, direction='AtoB'):
         """
 
         Args:
@@ -64,6 +64,7 @@ class pix2pix(object):
 
         self.dataset_name = dataset_name
         self.checkpoint_dir = checkpoint_dir
+        self.direction = direction
         self.build_model()
 
     def build_model(self):
@@ -72,8 +73,12 @@ class pix2pix(object):
                                          self.input_c_dim + self.output_c_dim],
                                         name='real_A_and_B_images')
 
-        self.real_B = self.real_data[:, :, :, :self.input_c_dim]
-        self.real_A = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+        if (self.direction == 'AtoB'):
+            self.real_A = self.real_data[:, :, :, :self.input_c_dim]
+            self.real_B = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+        else:
+            self.real_B = self.real_data[:, :, :, :self.input_c_dim]
+            self.real_A = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
 
         self.fake_B = self.generator(self.real_A)
 
