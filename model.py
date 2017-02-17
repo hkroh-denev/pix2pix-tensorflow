@@ -143,7 +143,7 @@ class pix2pix(object):
                           .minimize(self.d_loss, var_list=self.d_vars)
         g_optim = tf.train.AdamOptimizer(args.lr, beta1=args.beta1) \
                           .minimize(self.g_loss, var_list=self.g_vars)
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
 
         self.g_sum = tf.summary.merge([self.d__sum,
             self.fake_B_sum, self.d_loss_fake_sum, self.g_loss_sum])
@@ -393,7 +393,7 @@ class pix2pix(object):
 
     def test(self, args):
         """Test pix2pix"""
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
 
         sample_files = glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))
 
