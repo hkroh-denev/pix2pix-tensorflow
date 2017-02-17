@@ -89,9 +89,12 @@ class pix2pix(object):
 
         self.fake_B_sample = self.sampler(self.real_A)
 
-        self.d_sum = tf.histogram_summary("d", self.D)
-        self.d__sum = tf.histogram_summary("d_", self.D_)
-        self.fake_B_sum = tf.image_summary("fake_B", self.fake_B)
+        try:
+            self.d_sum = tf.histogram_summary("d", self.D)
+            self.d__sum = tf.histogram_summary("d_", self.D_)
+            self.fake_B_sum = tf.image_summary("fake_B", self.fake_B)
+        except InvalidArgumentError:
+            print('Invalid Argument Error for summary supressed')
 
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
         self.d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits_, tf.zeros_like(self.D_)))
