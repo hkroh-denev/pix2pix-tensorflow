@@ -9,6 +9,8 @@ from six.moves import xrange
 from ops import *
 from utils import *
 
+import cv2
+
 class pix2pix(object):
     def __init__(self, sess, image_size=256,
                  batch_size=1, sample_size=1, output_size=256,
@@ -430,3 +432,90 @@ class pix2pix(object):
             )
             save_images(samples, [self.batch_size, 1],
                         './{}/test_{:04d}.png'.format(args.test_dir, idx))
+
+    def load_model(self, args):
+        print("load model")
+        tf.global_variables_initializer().run()
+        if self.load(self.checkpoint_dir):
+            print(" [*] Load SUCCESS")
+        else:
+            print(" [!] Load failed...")
+
+    def test_single_image(self, args, data):
+        print("test_single_image")
+        sample_file = './{}/input_{}.jpg'.format(args.test_dir, data['id'])
+        preprocess(sample_file, data)
+        input_img = imread(sample_file)
+        h, w = input_img.shape
+        input_img = scipy.misc.imresize(input_img, [args.fine_size, args.fine_size])
+        input_img = input_img/127.5 - 1.
+        sample_image = np.empty((args.fine_size, args.fine_size, 6), dtype=np.float32)
+        for i in range(6):
+            sample_image [:, :, i] = input_img
+        sample_image = [sample_image]
+        samples = self.sess.run(
+            self.fake_B_sample,
+            feed_dict={self.real_data: sample_image}
+        )
+        sample = scipy.misc.imresize(samples[0], [h, w])
+        scipy.misc.imsave('./{}/output_{}.jpg'.format(args.test_dir, data['id']), sample)
+        #save_images([samples], [self.batch_size, 1],
+        #            './{}/output.jpg'.format(args.test_dir))
+
+def normalize(arr):
+    arr = arr.astype('float')
+    # Do not touch the alpha channel
+    for i in range(3):
+        minval = arr[...,i].min()
+        maxval = arr[...,i].max()
+        if minval != maxval:
+            arr[...,i] -= minval
+            arr[...,i] *= (255.0/(maxval-minval))
+    return arr
+
+def edge_enhancer(img, mode = 1, weight =1):
+
+    # mode == 1 : normal sharpening
+    if mode == 1:
+        kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+
+    # mode == 2: edge enhancement
+    elif mode == 2:
+        kernel = np.array([[-1,-1,-1,-1,-1],
+                                     [-1,2,2,2,-1],
+                                     [-1,2,8,2,-1],
+                                     [-1,2,2,2,-1],
+                                     [-1,-1,-1,-1,-1]]) / 8.0
+
+    return cv2.filter2D(img, -1, weight* kernel)
+
+def gray_dog_edge(img, filter_size1, filter_size2):
+
+    #img = cv2.bilateralFilter(img, 15, 90,90)
+    gray_img= cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+    g1 = cv2.GaussianBlur(gray_img, (filter_size1,filter_size1),0)
+    g2 = cv2.GaussianBlur(gray_img, (filter_size2,filter_size2),0)
+
+    result = cv2.subtract(g1, g2)
+
+    return normalize(result)
+
+def preprocess(filepath, data):
+    img = cv2.imread(filepath)
+
+    # sharpening
+    img = edge_enhancer(img, 2, 0.8)
+
+    c = 320
+
+    # conv to c x c
+    h, w = img.shape[:2]
+    if w > h:
+        img = cv2.resize(img, (w * c // h, c))
+    else:
+        img = cv2.resize(img, (c, h * c // w))
+
+    img = gray_dog_edge(img, data['dog1'], data['dog2'])
+
+    cv2.imwrite(filepath, img)
