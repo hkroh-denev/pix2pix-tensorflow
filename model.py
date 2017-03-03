@@ -101,6 +101,9 @@ class pix2pix(object):
         self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_logits_, labels=tf.ones_like(self.D_))) \
                         + self.L1_lambda * tf.reduce_mean(tf.abs(self.real_B - self.fake_B))
 
+        # too black image is loss
+        #self.g_loss += 100.0 * (1.0 - tf.reduce_mean(self.fake_B))
+
         self.d_loss_real_sum = tf.summary.scalar("d_loss_real", self.d_loss_real)
         self.d_loss_fake_sum = tf.summary.scalar("d_loss_fake", self.d_loss_fake)
 
@@ -430,3 +433,29 @@ class pix2pix(object):
             )
             save_images(samples, [self.batch_size, 1],
                         './{}/test_{:04d}.png'.format(args.test_dir, idx))
+
+    def load_model(self, args):
+        print("load model")
+        tf.global_variables_initializer().run()
+        if self.load(self.checkpoint_dir):
+            print(" [*] Load SUCCESS")
+        else:
+            print(" [!] Load failed...")
+
+    def test_single_image(self, args, data):
+        print("test_single_image")
+        sample_file = './{}/input_{}.jpg'.format(args.test_dir, data['id'])
+        input_img = imread(sample_file, is_grayscale=True)
+        h, w = input_img.shape
+        input_img = scipy.misc.imresize(input_img, [args.fine_size, args.fine_size])
+        input_img = input_img/127.5 - 1.
+        sample_image = np.empty((args.fine_size, args.fine_size, 6), dtype=np.float32)
+        for i in range(6):
+            sample_image [:, :, i] = input_img
+        sample_image = [sample_image]
+        samples = self.sess.run(
+            self.fake_B_sample,
+            feed_dict={self.real_data: sample_image}
+        )
+        sample = scipy.misc.imresize(samples[0], [h, w])
+        scipy.misc.imsave('./{}/output_{}.jpg'.format(args.test_dir, data['id']), sample)
